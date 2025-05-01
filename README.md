@@ -1,73 +1,106 @@
-# Welcome to your Lovable project
+# Scribe SOAP
 
-## Project info
+A web application that transcribes audio recordings and automatically generates SOAP (Subjective, Objective, Assessment, Plan) reports for healthcare professionals.
 
-**URL**: https://lovable.dev/projects/10adc1ca-d83b-4d13-aac2-7ed24d752d95
+## Table of Contents
+- [Demo](#demo)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Technology Stack](#technology-stack)
+- [Contributing](#contributing)
+- [License](#license)
 
-## How can I edit this code?
+## Demo
 
-There are several ways of editing your application.
+Visit the deployed application: [scribe-soap-scribe.lovable.app](https://scribe-soap-scribe.lovable.app)
 
-**Use Lovable**
+## Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/10adc1ca-d83b-4d13-aac2-7ed24d752d95) and start prompting.
+- Real-time audio recording and transcription
+- Automatic generation of structured SOAP reports from transcriptions
+- User-friendly interface for healthcare professionals
+- Fast and accurate processing
 
-Changes made via Lovable will be committed automatically to this repo.
+## Prerequisites
 
-**Use your preferred IDE**
+Before installing the application, ensure you have the following installed on your system:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js (v14 or later)
+- npm (v6 or later)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Installation
 
-Follow these steps:
+### Option 1: Use the Deployed Version
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Simply visit [scribe-soap-scribe.lovable.app](https://scribe-soap-scribe.lovable.app) to use the application without any installation.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Option 2: Local Installation
 
-# Step 3: Install the necessary dependencies.
-npm i
+1. Clone the repository:
+   ```bash
+   git clone [repository-url]
+   cd scribe-soap
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open your browser and navigate to:
+   ```
+   http://localhost:8080/
+   ```
+
+## Usage
+
+1. **Start Recording**:
+   - Click the "Start Recording" button
+   - Speak clearly into your microphone
+   - The real-time transcription will appear in the text block
+
+2. **End Recording**:
+   - Click the "Stop Recording" button when you've finished speaking
+
+3. **Generate SOAP Report**:
+   - Click the "Generate SOAP Report" button
+   - The application will process your transcription and generate a structured SOAP report
+   - Review the generated report in the designated area
+
+## Technology Stack
+
+### Backend
+- **Node.js** with **TypeScript** - Server-side runtime and language
+- **Zod** - Schema validation library
+
+### Frontend
+- **React** with **Vite.js** - UI framework and build tool
+
+### Services
+- **AssemblyAI** - Streaming audio transcription service
+- **OpenAI GPT-3.5 Turbo** - Natural language processing for SOAP report generation
+
+## Architecture Flow
+
+```mermaid
+graph TD
+    A[Browser UI] -->|WebSocket Audio Stream| B(AssemblyAI)
+    B -->|Real-time Transcript| A
+    A -->|HTTP POST Transcript| C[Node.js Backend]
+    C -->|API Call| D[OpenAI GPT-3.5]
+    C -->|Validation| E[Zod Schemas]
+    D -->|SOAP Note| C
+    E -->|Validated Data| C
+    C -->|JSON Response| A
 ```
 
-**Edit a file directly in GitHub**
+## Contributing
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/10adc1ca-d83b-4d13-aac2-7ed24d752d95) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Contributions are welcome! Please feel free to submit a Pull Request.
