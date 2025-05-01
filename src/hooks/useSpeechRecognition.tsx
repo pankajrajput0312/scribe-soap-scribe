@@ -1,27 +1,113 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { RealtimeTranscriber } from 'assemblyai';
+import { debounce } from 'lodash';
+
+interface TranscriptionSegment {
+  text: string;
+  isFinal: boolean;
+  id: string;
+}
 
 interface UseSpeechRecognitionReturn {
   transcript: string;
+  transcriptSegments: TranscriptionSegment[];
   isRecording: boolean;
   toggleRecording: () => Promise<void>;
   error: string | null;
   isInitialized: boolean;
+  isInitializing: boolean;
   browserSupportsSpeechRecognition: boolean;
 }
 
 export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
   const [transcript, setTranscript] = useState<string>('');
+  const [transcriptSegments, setTranscriptSegments] = useState<TranscriptionSegment[]>([]);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [isInitializing, setIsInitializing] = useState<boolean>(false);
   const isInitializedRef = useRef<boolean>(false);
   const isRecordingRef = useRef<boolean>(false);
+  const lastInterimId = useRef<string | null>(null);
+  const recentAudioCache = useRef<Set<string>>(new Set());
   
   const transcriberRef = useRef<RealtimeTranscriber | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
+
+  // Keep track of the last final text to avoid duplicates
+  const lastFinalTextRef = useRef<string>('');
+
+  // Update transcript from segments with duplicate prevention
+  useEffect(() => {
+    // Get all final segments
+    const finalSegments = transcriptSegments.filter(segment => segment.isFinal);
+    
+    // Get the latest interim segment
+    const latestInterim = transcriptSegments
+      .filter(segment => !segment.isFinal)
+      .pop();
+
+    // Build final text without duplicates
+    const finalText = finalSegments
+      .map(segment => segment.text)
+      .join(' ')
+      .trim();
+
+    // Only include interim if it's not part of the final text
+    const interimText = latestInterim?.text || '';
+    const shouldShowInterim = interimText && !finalText.endsWith(interimText);
+
+    setTranscript(
+      `${finalText}${shouldShowInterim ? ' ' + interimText : ''}`
+    );
+  }, [transcriptSegments]);
+
+  // Handle transcript updates with duplicate prevention
+  const updateTranscript = useCallback((message: any) => {
+    if (!message?.text?.trim()) return;
+
+    const text = message.text.trim();
+    const isFinal = message.message_type === 'FinalTranscript';
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // For final transcripts, check if it's not a duplicate
+    if (isFinal) {
+      // If this final text is already included in our last final text, skip it
+      if (lastFinalTextRef.current.includes(text)) {
+        return;
+      }
+      lastFinalTextRef.current = text;
+    }
+
+    setTranscriptSegments(prevSegments => {
+      // Remove any interim segments that are now part of this final text
+      const filteredSegments = isFinal
+        ? prevSegments.filter(s => s.isFinal)
+        : prevSegments.filter(s => s.isFinal || s.id === lastInterimId.current);
+
+      // If this is an interim result, store its ID
+      if (!isFinal) {
+        lastInterimId.current = id;
+      } else {
+        lastInterimId.current = null;
+      }
+
+      // Add new segment
+      return [...filteredSegments, { text, isFinal, id }];
+    });
+  }, []);
+
+  // Debounced version for interim results with longer delay
+  const debouncedUpdateTranscript = useCallback(
+    debounce((message: any) => {
+      if (message.message_type !== 'FinalTranscript') {
+        updateTranscript(message);
+      }
+    }, 500), // Increased debounce time to reduce interim updates
+    [updateTranscript]
+  );
 
   const getToken = async () => {
     try {
@@ -65,26 +151,21 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
   const initializeTranscriber = async () => {
     try {
       if (transcriberRef.current) {
-        console.log('Closing existing transcriber...');
         await transcriberRef.current.close();
         transcriberRef.current = null;
-        isInitializedRef.current = false;
-        setIsInitialized(false);
       }
 
       const token = await getToken();
-      console.log('Got token, initializing transcriber...');
-
       const transcriber = new RealtimeTranscriber({
         token,
         sampleRate: 16000,
+        // Optimize for real-time transcription
         wordBoost: ['patient', 'doctor', 'medical', 'health', 'symptoms', 'treatment'],
         encoding: 'pcm_s16le'
       });
 
-      // Set up event listeners before connecting
       transcriber.on('open', ({ sessionId }) => {
-        console.log(`Transcription session opened with ID: ${sessionId}`);
+        console.log(`Session opened: ${sessionId}`);
         isInitializedRef.current = true;
         setIsInitialized(true);
       });
@@ -92,63 +173,32 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
       transcriber.on('error', (error) => {
         console.error('Transcription error:', error);
         setError(error.message);
-        isInitializedRef.current = false;
-        setIsInitialized(false);
-        stopRecording();
-      });
-
-      transcriber.on('close', (code, reason) => {
-        console.log('Transcription session closed:', code, reason);
-        setIsRecording(false);
-        isInitializedRef.current = false;
-        setIsInitialized(false);
       });
 
       transcriber.on('transcript', (message) => {
-        console.log('Raw transcript message:', message);
-        
-        if (message && typeof message === 'object') {
-          const text = message.text || '';
-          const messageType = message.message_type || '';
-          
-          console.log(`Received ${messageType}:`, text);
-          
-          if (text.trim()) {
-            setTranscript(prev => {
-              if (messageType === 'FinalTranscript') {
-                return `${prev}${prev ? '. ' : ''}${text}`;
-              }
-              return `${prev.split('.').slice(0, -1).join('.')}${prev ? '. ' : ''}${text}`;
-            });
+        if (message?.text?.trim()) {
+          if (message.message_type === 'FinalTranscript') {
+            updateTranscript(message);
+          } else {
+            debouncedUpdateTranscript(message);
           }
         }
       });
 
       transcriberRef.current = transcriber;
-      
-      // Connect and wait for initialization
-      console.log('Connecting to AssemblyAI...');
       await transcriber.connect();
-      
-      // Wait for the initialized state to be true using the ref
-      const timeout = 10000; // 10 seconds timeout
+
+      // Wait for initialization with timeout
       const startTime = Date.now();
-      
-      while (!isInitializedRef.current && Date.now() - startTime < timeout) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+      while (!isInitializedRef.current && Date.now() - startTime < 5000) {
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
-      
+
       if (!isInitializedRef.current) {
-        throw new Error('Transcriber failed to initialize within timeout');
+        throw new Error('Initialization timeout');
       }
-      
-      console.log('Transcriber initialized and connected successfully');
-      return transcriber;
     } catch (error) {
-      console.error('Error initializing transcriber:', error);
-      setError(error instanceof Error ? error.message : 'Failed to initialize transcriber');
-      isInitializedRef.current = false;
-      setIsInitialized(false);
+      console.error('Initialization error:', error);
       throw error;
     }
   };
@@ -167,138 +217,115 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
         console.log('Starting new recording...');
         setError(null);
         setTranscript('');
-
-        // Set recording state early
-        isRecordingRef.current = true;
-        setIsRecording(true);
-
-        // Initialize transcriber and wait for it to be ready
-        console.log('Initializing transcriber...');
-        await initializeTranscriber();
-        
-        if (!transcriberRef.current || !isInitializedRef.current) {
-          isRecordingRef.current = false;
-          setIsRecording(false);
-          throw new Error('Transcriber initialization failed');
-        }
-
-        console.log('Requesting microphone access...');
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            sampleRate: 16000,
-            channelCount: 1,
-            echoCancellation: true,
-            noiseSuppression: true,
-          }
-        });
-        console.log('Microphone access granted');
-        mediaStreamRef.current = stream;
-
-        console.log('Creating audio context...');
-        const audioContext = new AudioContext({ 
-          sampleRate: 16000,
-          latencyHint: 'interactive'
-        });
-        audioContextRef.current = audioContext;
-        console.log('Audio context created with sample rate:', audioContext.sampleRate);
+        setIsInitializing(true);
 
         try {
-          // Load and register the audio worklet
-          console.log('Loading audio worklet...');
-          await audioContext.audioWorklet.addModule('/audio-processor.js');
-          console.log('Audio worklet loaded successfully');
+          // Initialize transcriber and wait for it to be ready
+          console.log('Initializing transcriber...');
+          await initializeTranscriber();
+          
+          if (!transcriberRef.current || !isInitializedRef.current) {
+            throw new Error('Transcriber initialization failed');
+          }
+
+          console.log('Requesting microphone access...');
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              sampleRate: 16000,
+              channelCount: 1,
+              echoCancellation: true,
+              noiseSuppression: true,
+            }
+          });
+
+          // Set up audio processing
+          await setupAudioProcessing(stream);
+          
+          // Only set recording state after everything is set up
+          isRecordingRef.current = true;
+          setIsRecording(true);
         } catch (error) {
-          console.error('Failed to load audio worklet:', error);
+          console.error('Setup error:', error);
           stopRecording();
+          setError(error instanceof Error ? error.message : 'Setup failed');
           throw error;
+        } finally {
+          setIsInitializing(false);
         }
-        
-        // Create audio source
-        const source = audioContext.createMediaStreamSource(stream);
-        console.log('Audio source created');
-        
-        // Create audio worklet node
-        console.log('Creating audio worklet node...');
-        const workletNode = new AudioWorkletNode(audioContext, 'audio-processor', {
-          numberOfInputs: 1,
-          numberOfOutputs: 1,
-          channelCount: 1,
-          processorOptions: {
-            sampleRate: audioContext.sampleRate
-          }
-        });
-        console.log('Audio worklet node created');
-
-        // Handle audio data from the worklet
-        workletNode.port.onmessage = (event) => {
-          const { type, data, bufferInfo } = event.data;
-          
-          if (type === 'debug') {
-            console.log('Worklet debug:', event.data);
-            return;
-          }
-          
-          if (type === 'audio') {
-            console.log('Received audio data from worklet:', {
-              type,
-              dataLength: data?.length,
-              bufferInfo
-            });
-            
-            // Data is already Int16Array from the worklet
-            handleAudioData(data, bufferInfo);
-          }
-        };
-
-        // Handle worklet errors
-        workletNode.onprocessorerror = (error) => {
-          console.error('Audio worklet processing error:', error);
-        };
-
-        // Connect the audio nodes
-        console.log('Connecting audio nodes...');
-        source.connect(workletNode);
-        workletNode.connect(audioContext.destination);
-        
-        console.log('Audio processing setup complete');
       }
     } catch (err) {
       console.error('Error in toggleRecording:', err);
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
       stopRecording();
       setIsInitialized(false);
+      setIsInitializing(false);
     }
+  };
+
+  // New helper function to set up audio processing
+  const setupAudioProcessing = async (stream: MediaStream) => {
+    console.log('Setting up audio processing...');
+    mediaStreamRef.current = stream;
+
+    const audioContext = new AudioContext({ 
+      sampleRate: 16000,
+      latencyHint: 'interactive'
+    });
+    audioContextRef.current = audioContext;
+
+    // Load and register the audio worklet
+    await audioContext.audioWorklet.addModule('/audio-processor.js');
+    
+    const source = audioContext.createMediaStreamSource(stream);
+    const workletNode = new AudioWorkletNode(audioContext, 'audio-processor', {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      channelCount: 1,
+      processorOptions: {
+        sampleRate: audioContext.sampleRate
+      }
+    });
+
+    // Set up worklet message handling
+    workletNode.port.onmessage = (event) => {
+      const { type, data, bufferInfo } = event.data;
+      if (type === 'audio') {
+        handleAudioData(data, bufferInfo);
+      }
+    };
+
+    // Connect the audio nodes
+    source.connect(workletNode);
+    workletNode.connect(audioContext.destination);
+    console.log('Audio processing setup complete');
   };
 
   const handleAudioData = async (audioData: Int16Array, bufferInfo: any) => {
     if (!transcriberRef.current || !isInitializedRef.current || !isRecordingRef.current) {
-      console.log('Skipping audio processing - not ready', {
-        hasTranscriber: !!transcriberRef.current,
-        isInitialized: isInitializedRef.current,
-        isRecording: isRecordingRef.current
-      });
       return;
     }
 
     try {
-      // Log audio stats
-      console.log('Processing audio data:', {
-        format: '16-bit PCM',
-        sampleRate: bufferInfo.sampleRate || 16000,
-        duration: bufferInfo.duration,
-        samples: audioData.length,
-        maxValue: Math.max(...Array.from(audioData).map(Math.abs)),
-        bufferInfo
-      });
+      // Check if this is an end of speech marker
+      if (bufferInfo.isEndOfSpeech) {
+        console.log('End of speech detected, duration:', bufferInfo.silenceDuration);
+        return;
+      }
+
+      // Generate cache key based on first few samples
+      const cacheKey = Array.from(audioData.slice(0, 10)).join(',');
+      if (recentAudioCache.current.has(cacheKey)) {
+        return;
+      }
+
+      // Add to cache and remove old entries
+      recentAudioCache.current.add(cacheKey);
+      if (recentAudioCache.current.size > 100) {
+        recentAudioCache.current.clear();
+      }
 
       // Send raw buffer to AssemblyAI
       await transcriberRef.current.sendAudio(audioData.buffer);
-      
-      console.log('Sent audio data to AssemblyAI:', {
-        byteLength: audioData.byteLength,
-        duration: bufferInfo.duration,
-        maxValue: bufferInfo.maxPcmValue
-      });
     } catch (error) {
       console.error('Error processing audio data:', error);
     }
@@ -316,10 +343,12 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
 
   return {
     transcript,
+    transcriptSegments,
     isRecording,
     toggleRecording,
     error,
     isInitialized,
+    isInitializing,
     browserSupportsSpeechRecognition: typeof window !== 'undefined' && 
       'mediaDevices' in navigator && 
       'getUserMedia' in navigator.mediaDevices

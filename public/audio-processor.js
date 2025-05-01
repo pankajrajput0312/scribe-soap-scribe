@@ -2,32 +2,29 @@ class AudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.bufferSize = 0;
-    this.audioBuffer = new Float32Array(16000); // 1 second of audio at 16kHz
+    // Reduce buffer size to 8000 samples (0.5 seconds at 16kHz) for lower latency
+    this.audioBuffer = new Float32Array(8000);
     this.lastSendTime = 0;
     this.sampleCount = 0;
     this.chunks = 0;
-    this.port.postMessage({ type: 'debug', message: 'AudioProcessor initialized' });
+    // Track continuous silence for VAD
+    this.silenceCounter = 0;
+    this.port.postMessage({ type: 'debug', message: 'AudioProcessor initialized with optimized settings' });
   }
 
   process(inputs, outputs, parameters) {
     const input = inputs[0];
     if (!input || !input.length) {
-      this.port.postMessage({
-        type: 'debug',
-        message: 'No input data received'
-      });
       return true;
     }
 
     const inputChannel = input[0];
     let maxAmplitude = 0;
 
-    // Normalize and convert to 16-bit PCM
+    // Normalize and convert to 16-bit PCM with optimized loop
     const pcmData = new Int16Array(inputChannel.length);
     for (let i = 0; i < inputChannel.length; i++) {
-      // Normalize audio data to [-1, 1] range
       const normalizedSample = Math.max(-1, Math.min(1, inputChannel[i]));
-      // Scale to 16-bit range [-32768, 32767]
       pcmData[i] = Math.round(normalizedSample * 32767);
       maxAmplitude = Math.max(maxAmplitude, Math.abs(normalizedSample));
     }
@@ -43,26 +40,25 @@ class AudioProcessor extends AudioWorkletProcessor {
     // Calculate current time in milliseconds
     const currentTimeMs = currentFrame / sampleRate * 1000;
 
-    // Send buffer every 100ms if we have data
-    if (this.bufferSize > 0 && (currentTimeMs - this.lastSendTime >= 100)) {
-      // Only send if we detect actual audio (not silence)
+    // Reduce interval to 50ms for more responsive transcription
+    if (this.bufferSize > 0 && (currentTimeMs - this.lastSendTime >= 50)) {
       if (maxAmplitude > 0.01) {
+        this.silenceCounter = 0;
         const audioToSend = this.audioBuffer.slice(0, this.bufferSize);
         
-        // Convert buffer to 16-bit PCM with proper normalization
+        // Optimize PCM conversion with pre-allocated buffer
         const pcmBuffer = new Int16Array(audioToSend.length);
         let maxPcmValue = 0;
         
         for (let i = 0; i < audioToSend.length; i++) {
-          // Normalize and convert to 16-bit PCM
           const normalizedSample = Math.max(-1, Math.min(1, audioToSend[i]));
           const pcmValue = Math.round(normalizedSample * 32767);
           pcmBuffer[i] = pcmValue;
           maxPcmValue = Math.max(maxPcmValue, Math.abs(pcmValue));
         }
 
-        // Only send if we have significant audio
-        if (maxPcmValue > 1000) {
+        // Lower threshold for more sensitive voice detection
+        if (maxPcmValue > 500) {
           this.port.postMessage({
             type: 'audio',
             data: pcmBuffer,
@@ -73,39 +69,28 @@ class AudioProcessor extends AudioWorkletProcessor {
               totalSamples: this.sampleCount,
               sampleRate: sampleRate,
               duration: this.bufferSize / sampleRate,
-              maxPcmValue
+              maxPcmValue,
+              isEndOfSpeech: false
             }
           }, [pcmBuffer.buffer]);
-
-          // Log debug info
-          this.port.postMessage({
-            type: 'debug',
-            message: 'Audio stats',
-            stats: {
-              maxAmplitude,
-              maxPcmValue,
-              bufferSize: this.bufferSize,
-              sampleRate,
-              duration: this.bufferSize / sampleRate,
-              currentTimeMs
-            }
-          });
-        } else {
-          this.port.postMessage({
-            type: 'debug',
-            message: 'Audio too quiet',
-            stats: {
-              maxPcmValue,
-              threshold: 1000
-            }
-          });
         }
       } else {
-        this.port.postMessage({
-          type: 'debug',
-          message: 'Skipping silent audio',
-          amplitude: maxAmplitude
-        });
+        this.silenceCounter++;
+        
+        // If silence for more than 1 second (20 frames of 50ms)
+        if (this.silenceCounter >= 20) {
+          this.port.postMessage({
+            type: 'audio',
+            data: new Int16Array(0),
+            maxAmplitude: 0,
+            timestamp: currentTimeMs,
+            bufferInfo: {
+              isEndOfSpeech: true,
+              silenceDuration: this.silenceCounter * 50
+            }
+          });
+          this.silenceCounter = 0;
+        }
       }
 
       // Reset buffer

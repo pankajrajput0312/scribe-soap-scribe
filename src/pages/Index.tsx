@@ -9,9 +9,12 @@ const Index = () => {
   const { toast } = useToast();
   const {
     transcript,
+    transcriptSegments,
     isRecording,
     toggleRecording,
-    browserSupportsSpeechRecognition
+    browserSupportsSpeechRecognition,
+    isInitialized,
+    isInitializing
   } = useSpeechRecognition();
   
   const [soapReport, setSoapReport] = useState<{
@@ -90,13 +93,17 @@ const Index = () => {
         <div className="flex justify-center w-full">
           <RecordingButton 
             isRecording={isRecording} 
-            onToggleRecording={toggleRecording} 
+            onToggleRecording={toggleRecording}
+            disabled={isInitializing} 
           />
         </div>
 
         <TranscriptionDisplay 
-          transcript={transcript} 
-          isRecording={isRecording} 
+          transcript={transcript}
+          transcriptSegments={transcriptSegments}
+          isRecording={isRecording}
+          isInitialized={isInitialized}
+          isInitializing={isInitializing}
         />
 
         <SoapReport 
