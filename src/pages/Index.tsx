@@ -3,7 +3,7 @@ import { useToast } from "@/components/ui/use-toast";
 import RecordingButton from '@/components/RecordingButton';
 import TranscriptionDisplay from '@/components/TranscriptionDisplay';
 import SoapReport from '@/components/SoapReport';
-import useSpeechRecognition from '@/hooks/useSpeechRecognition';
+import {useSpeechRecognition} from '@/hooks/useSpeechRecognition';
 
 const Index = () => {
   const { toast } = useToast();
