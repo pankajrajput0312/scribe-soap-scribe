@@ -9,8 +9,8 @@ A web application that transcribes audio recordings and automatically generates 
 - [Installation](#installation)
 - [Usage](#usage)
 - [Technology Stack](#technology-stack)
+- [API Referene](#api-reference)
 - [Contributing](#contributing)
-- [License](#license)
 
 ## Demo
 
@@ -101,6 +101,40 @@ graph TD
     C -->|JSON Response| A
 ```
 
+## API Reference
+
+The backend is deployed at: **https://automationapi.getmentore.com/**
+
+### API Endpoints
+
+#### Generate SOAP Report
+```
+POST https://automationapi.getmentore.com/soap-report/generate
+```
+This endpoint processes the transcription and generates a structured SOAP report using OpenAI's GPT-3.5 Turbo.
+
+#### Generate AssemblyAI Token
+```
+GET https://automationapi.getmentore.com/soap-report/token
+```
+This endpoint generates a token for authenticating with the AssemblyAI service for audio transcription.
+
+### API Documentation
+For detailed API documentation, visit:
+```
+https://automationapi.getmentore.com/rapidoc#post-/soap-report/generate
+```
+
+
+## Code References
+
+The majority of the backend code is written in the following file:
+```
+https://github.com/pankajrajput0312/automation-backend/blob/main/src/controllers/soap-report.ts
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+
