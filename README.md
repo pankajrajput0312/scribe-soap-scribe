@@ -1,4 +1,4 @@
-# Scribe SOAP
+# Auto SOAP Generator
 
 A web application that transcribes audio recordings and automatically generates SOAP (Subjective, Objective, Assessment, Plan) reports for healthcare professionals.
 
