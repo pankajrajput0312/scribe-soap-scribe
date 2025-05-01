@@ -38,7 +38,7 @@ export const soapReportService = {
             .replace(/\.+/g, '.') // Replace multiple periods with single period
             .trim();
 
-          const response = await fetch('http://localhost:3000/soap-report/generate', {
+          const response = await fetch('https://automationapi.getmentore.com/soap-report/generate', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
