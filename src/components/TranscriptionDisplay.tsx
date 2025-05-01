@@ -1,5 +1,6 @@
-
 import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TranscriptionDisplayProps {
   transcript: string;
@@ -10,24 +11,26 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
   transcript,
   isRecording,
 }) => {
+  if (!transcript) {
+    return null;
+  }
+
   return (
-    <div className="w-full bg-white rounded-lg shadow-md p-4 min-h-[200px] max-h-[400px] overflow-y-auto border border-gray-200">
-      <h2 className="text-lg font-medium mb-2 text-gray-700 flex items-center">
-        Transcription
-        {isRecording && (
-          <span className="ml-2 h-2 w-2 bg-red-500 rounded-full inline-block recording-pulse"></span>
-        )}
-      </h2>
-      <div className="text-gray-700 whitespace-pre-wrap">
-        {transcript || (
-          <span className="text-gray-400 italic">
-            {isRecording
-              ? "Listening... Start speaking"
-              : "Click 'Start Recording' to begin transcription"}
-          </span>
-        )}
-      </div>
-    </div>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="text-primary">Transcription</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-[300px] w-full rounded-md border p-4">
+          <div className="whitespace-pre-wrap text-gray-700">
+            {transcript}
+            {isRecording && (
+              <span className="animate-pulse text-primary">...</span>
+            )}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
   );
 };
 

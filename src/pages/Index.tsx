@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import RecordingButton from '@/components/RecordingButton';
@@ -102,8 +101,8 @@ const Index = () => {
 
         <SoapReport 
           transcript={transcript}
-          onGenerateReport={generateSoapReport}
           soapReport={soapReport}
+          setSoapReport={setSoapReport}
         />
       </main>
 
