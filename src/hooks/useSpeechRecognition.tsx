@@ -34,7 +34,6 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
   const transcriberRef = useRef<RealtimeTranscriber | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const processorNodeRef = useRef<ScriptProcessorNode | null>(null);
 
   // Keep track of the last final text to avoid duplicates
   const lastFinalTextRef = useRef<string>('');
@@ -105,7 +104,7 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
       if (message.message_type !== 'FinalTranscript') {
         updateTranscript(message);
       }
-    }, 500), // Increased debounce time to reduce interim updates
+    }, 500), 
     [updateTranscript]
   );
 

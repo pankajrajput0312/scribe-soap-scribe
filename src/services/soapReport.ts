@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 interface SoapReportResponse {
   success: boolean;
   data: {
@@ -10,21 +8,6 @@ interface SoapReportResponse {
   };
   message: string;
 }
-
-// export const generateSoapReport = async (text: string): Promise<SoapReportResponse> => {
-//   try {
-//     const response = await axios.post<SoapReportResponse>(
-//       'https://automationapi.getmentore.com/soap-report/generate',
-//       { text }
-//     );
-//     return response.data;
-//   } catch (error) {
-//     if (axios.isAxiosError(error)) {
-//       throw new Error(error.response?.data?.message || 'Failed to generate SOAP report');
-//     }
-//     throw new Error('An unexpected error occurred');
-//   }
-// }; 
 
   
 export const soapReportService = {
