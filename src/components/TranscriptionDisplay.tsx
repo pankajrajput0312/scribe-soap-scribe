@@ -79,7 +79,7 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
                   className={`inline ${
                     segment.isFinal 
                       ? 'text-gray-900 font-normal' 
-                      : 'text-gray-400 font-light'
+                      : 'text-gray-700 font-light'
                   }`}
                 >
                   {index > 0 ? ' ' : ''}{segment.text}

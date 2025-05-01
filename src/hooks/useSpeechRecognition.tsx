@@ -203,31 +203,56 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
     }
   };
 
+  // Initialize transcriber on component mount
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        setIsInitializing(true);
+        await initializeTranscriber();
+        setIsInitializing(false);
+      } catch (error) {
+        console.error('Failed to initialize on mount:', error);
+        setError(error instanceof Error ? error.message : 'Initialization failed');
+        setIsInitializing(false);
+      }
+    };
+
+    initialize();
+
+    // Cleanup on unmount
+    return () => {
+      stopRecording();
+      if (transcriberRef.current) {
+        transcriberRef.current.close();
+      }
+    };
+  }, []);
+
   const toggleRecording = async () => {
     try {
       if (isRecording) {
         console.log('Stopping current recording...');
         stopRecording();
-        if (transcriberRef.current) {
-          await transcriberRef.current.close();
-          isInitializedRef.current = false;
-          setIsInitialized(false);
-        }
       } else {
         console.log('Starting new recording...');
         setError(null);
         setTranscript('');
-        setIsInitializing(true);
+
+        // If transcriber is not initialized, initialize it
+        if (!isInitializedRef.current) {
+          setIsInitializing(true);
+          try {
+            await initializeTranscriber();
+          } catch (error) {
+            console.error('Failed to initialize transcriber:', error);
+            setError(error instanceof Error ? error.message : 'Initialization failed');
+            setIsInitializing(false);
+            return;
+          }
+          setIsInitializing(false);
+        }
 
         try {
-          // Initialize transcriber and wait for it to be ready
-          console.log('Initializing transcriber...');
-          await initializeTranscriber();
-          
-          if (!transcriberRef.current || !isInitializedRef.current) {
-            throw new Error('Transcriber initialization failed');
-          }
-
           console.log('Requesting microphone access...');
           const stream = await navigator.mediaDevices.getUserMedia({
             audio: {
@@ -249,8 +274,6 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
           stopRecording();
           setError(error instanceof Error ? error.message : 'Setup failed');
           throw error;
-        } finally {
-          setIsInitializing(false);
         }
       }
     } catch (err) {
@@ -258,7 +281,6 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
       stopRecording();
       setIsInitialized(false);
-      setIsInitializing(false);
     }
   };
 
@@ -330,16 +352,6 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
       console.error('Error processing audio data:', error);
     }
   };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopRecording();
-      if (transcriberRef.current) {
-        transcriberRef.current.close();
-      }
-    };
-  }, [stopRecording]);
 
   return {
     transcript,
