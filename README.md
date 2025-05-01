@@ -14,7 +14,7 @@ A web application that transcribes audio recordings and automatically generates 
 
 ## Demo
 
-Visit the deployed application: [scribe-soap-scribe.lovable.app](https://scribe-soap-scribe.lovable.app)
+Visit the deployed application: [asha-health.lovable.app](https://asha-health.lovable.app/)
 
 ## Features
 
@@ -34,7 +34,7 @@ Before installing the application, ensure you have the following installed on yo
 
 ### Option 1: Use the Deployed Version
 
-Simply visit [scribe-soap-scribe.lovable.app](https://scribe-soap-scribe.lovable.app) to use the application without any installation.
+Simply visit [asha-health.lovable.app](https://asha-health.lovable.app/) to use the application without any installation.
 
 ### Option 2: Local Installation
 
