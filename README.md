@@ -16,12 +16,20 @@ A web application that transcribes audio recordings and automatically generates 
 
 Visit the deployed application: [asha-health.lovable.app](https://asha-health.lovable.app/)
 
+Vs1 Deployed Link:- https://preview-e048df88--audio-to-soap-generator.lovable.app/
+
+Vs2 Deployed Link:- https://audio-to-soap-generator.lovable.app/
+
+Demo Video Link: [Demo Video](https://www.dropbox.com/scl/fi/ychwqyrs122frvdm9aln3/Asha_health_assignment_demo-Made-with-Clipchamp_1746206964098.mp4?rlkey=ptoctcqipeqzr7csm107gh3h0&dl=0)
+
 ## Features
 
 - Real-time audio recording and transcription
 - Automatic generation of structured SOAP reports from transcriptions
 - User-friendly interface for healthcare professionals
 - Fast and accurate processing
+- mapping between each line in the final SOAP note and the excerpts from the transcript from which it was inferred
+- medical conversations with multiple speakers (provider, patient, nurse, family member)
 
 ## Prerequisites
 
@@ -61,18 +69,26 @@ Simply visit [asha-health.lovable.app](https://asha-health.lovable.app/) to use 
 
 ## Usage
 
-1. **Start Recording**:
+1. **Select Speakers**
+   - Select available speakers among Doctors, Patient are compulsory and nurse and Family members are optional
+  
+2. **Start Recording**:
    - Click the "Start Recording" button
    - Speak clearly into your microphone
    - The real-time transcription will appear in the text block
 
-2. **End Recording**:
+3. **End Recording**:
    - Click the "Stop Recording" button when you've finished speaking
 
-3. **Generate SOAP Report**:
+4. **Generate SOAP Report**:
    - Click the "Generate SOAP Report" button
    - The application will process your transcription and generate a structured SOAP report
    - Review the generated report in the designated area
+   - On hovering on any SOAP note, it indicates the sources from which decision comes up
+  
+5. **Speaker identification**
+   - Click on Speaker identified trancription to view transcription with speaker
+   - speaker identified transcription generated once we click on stop recording button
 
 ## Technology Stack
 
