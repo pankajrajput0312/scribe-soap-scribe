@@ -38,7 +38,10 @@ const Index = () => {
     toggleRecording,
     browserSupportsSpeechRecognition,
     isInitialized,
-    isInitializing
+    isInitializing,
+    enhancedTranscript,
+    selectedSpeakers,
+    setSelectedSpeakers
   } = useSpeechRecognition();
   
   const [soapReport, setSoapReport] = useState<SoapReportData | null>(null);
@@ -135,6 +138,9 @@ const Index = () => {
           isRecording={isRecording}
           isInitialized={isInitialized}
           isInitializing={isInitializing}
+          enhancedTranscript={enhancedTranscript}
+          selectedSpeakers={selectedSpeakers}
+          setSelectedSpeakers={setSelectedSpeakers}
         />
 
         <SoapReport 

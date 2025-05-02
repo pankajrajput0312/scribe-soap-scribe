@@ -8,6 +8,11 @@ interface TranscriptionSegment {
   id: string;
 }
 
+interface SpeakerSegment {
+  speaker: string;
+  text: string;
+}
+
 interface UseSpeechRecognitionReturn {
   transcript: string;
   transcriptSegments: TranscriptionSegment[];
@@ -17,6 +22,9 @@ interface UseSpeechRecognitionReturn {
   isInitialized: boolean;
   isInitializing: boolean;
   browserSupportsSpeechRecognition: boolean;
+  enhancedTranscript: SpeakerSegment[];
+  selectedSpeakers: string[];
+  setSelectedSpeakers: (speakers: string[]) => void;
 }
 
 export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
@@ -26,6 +34,8 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
+  const [enhancedTranscript, setEnhancedTranscript] = useState<SpeakerSegment[]>([]);
+  const [selectedSpeakers, setSelectedSpeakers] = useState<string[]>(['Doctor', 'Patient']);
   const isInitializedRef = useRef<boolean>(false);
   const isRecordingRef = useRef<boolean>(false);
   const lastInterimId = useRef<string | null>(null);
@@ -129,6 +139,32 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
     }
   };
 
+  const processTranscriptWithSpeakers = async (text: string) => {
+    try {
+      const response = await fetch('http://localhost:3000/soap-report/speaker-labeled', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          speakers: selectedSpeakers,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to process transcript');
+      }
+
+      setEnhancedTranscript(data.data.conversation);
+    } catch (error) {
+      console.error('Error processing transcript:', error);
+      setError(error instanceof Error ? error.message : 'Failed to process transcript');
+    }
+  };
+
   const stopRecording = useCallback(() => {
     console.log('Stopping recording...');
     isRecordingRef.current = false;
@@ -143,9 +179,14 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
+
+    // Process transcript with speakers when recording stops
+    if (transcript.trim()) {
+      processTranscriptWithSpeakers(transcript);
+    }
     
     console.log('Recording stopped');
-  }, []);
+  }, [transcript]);
 
   const initializeTranscriber = async () => {
     try {
@@ -362,6 +403,9 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
     isInitializing,
     browserSupportsSpeechRecognition: typeof window !== 'undefined' && 
       'mediaDevices' in navigator && 
-      'getUserMedia' in navigator.mediaDevices
+      'getUserMedia' in navigator.mediaDevices,
+    enhancedTranscript,
+    selectedSpeakers,
+    setSelectedSpeakers,
   };
 };
