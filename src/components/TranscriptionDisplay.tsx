@@ -3,16 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { PlusCircle, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface TranscriptionSegment {
   text: string;
@@ -44,6 +36,14 @@ const AVAILABLE_SPEAKERS = [
   'Other'
 ];
 
+const SPEAKER_COLORS = {
+  'Doctor': 'text-blue-700 font-semibold',
+  'Patient': 'text-emerald-700 font-semibold',
+  'Nurse': 'text-violet-700 font-semibold',
+  'Family Member': 'text-amber-700 font-semibold',
+  'Other': 'text-slate-700 font-semibold'
+};
+
 const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
   transcript,
   transcriptSegments,
@@ -61,15 +61,13 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
     return "Click 'Start Recording' to begin";
   };
 
-  const handleAddSpeaker = (speaker: string) => {
-    if (!selectedSpeakers.includes(speaker)) {
-      setSelectedSpeakers([...selectedSpeakers, speaker]);
-    }
-  };
-
-  const handleRemoveSpeaker = (speaker: string) => {
-    if (speaker !== 'Doctor' && speaker !== 'Patient') {
+  const handleSpeakerToggle = (speaker: string) => {
+    if (speaker === 'Doctor' || speaker === 'Patient') return;
+    
+    if (selectedSpeakers.includes(speaker)) {
       setSelectedSpeakers(selectedSpeakers.filter(s => s !== speaker));
+    } else {
+      setSelectedSpeakers([...selectedSpeakers, speaker]);
     }
   };
 
@@ -103,36 +101,23 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
       <CardContent>
         <div className="mb-4">
           <h3 className="text-sm font-medium mb-2">Speakers</h3>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {selectedSpeakers.map(speaker => (
-              <Badge key={speaker} variant="secondary" className="text-sm">
-                {speaker}
-                {speaker !== 'Doctor' && speaker !== 'Patient' && (
-                  <button
-                    onClick={() => handleRemoveSpeaker(speaker)}
-                    className="ml-1 hover:text-red-500"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </Badge>
+          <div className="grid grid-cols-2 gap-2">
+            {AVAILABLE_SPEAKERS.map(speaker => (
+              <div key={speaker} className="flex items-center space-x-2">
+                <Checkbox
+                  id={speaker}
+                  checked={selectedSpeakers.includes(speaker)}
+                  onCheckedChange={() => handleSpeakerToggle(speaker)}
+                  disabled={speaker === 'Doctor' || speaker === 'Patient'}
+                />
+                <Label 
+                  htmlFor={speaker} 
+                  className={`text-sm ${SPEAKER_COLORS[speaker as keyof typeof SPEAKER_COLORS]}`}
+                >
+                  {speaker}
+                </Label>
+              </div>
             ))}
-          </div>
-          <div className="flex gap-2">
-            <Select
-              onValueChange={handleAddSpeaker}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Add speaker" />
-              </SelectTrigger>
-              <SelectContent>
-                {AVAILABLE_SPEAKERS.filter(speaker => !selectedSpeakers.includes(speaker)).map(speaker => (
-                  <SelectItem key={speaker} value={speaker}>
-                    {speaker}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
 
@@ -198,7 +183,7 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
                 {enhancedTranscript.length > 0 ? (
                   enhancedTranscript.map((segment, idx) => (
                     <div key={idx} className="flex gap-2">
-                      <span className="font-medium text-primary whitespace-nowrap">
+                      <span className={`font-medium whitespace-nowrap ${SPEAKER_COLORS[segment.speaker as keyof typeof SPEAKER_COLORS]}`}>
                         {segment.speaker}:
                       </span>
                       <span className="text-gray-700">
