@@ -3,7 +3,31 @@ import { useToast } from "@/components/ui/use-toast";
 import RecordingButton from '@/components/RecordingButton';
 import TranscriptionDisplay from '@/components/TranscriptionDisplay';
 import SoapReport from '@/components/SoapReport';
-import {useSpeechRecognition} from '@/hooks/useSpeechRecognition';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+
+interface Source {
+  speaker: string;
+  quote?: string;
+  finding?: string;
+  reasoning?: string;
+  action?: string;
+  range: {
+    start: number;
+    end: number;
+  };
+}
+
+interface SectionData {
+  content: string;
+  sources: Source[];
+}
+
+interface SoapReportData {
+  subjective: SectionData;
+  objective: SectionData;
+  assessment: SectionData;
+  plan: SectionData;
+}
 
 const Index = () => {
   const { toast } = useToast();
@@ -17,12 +41,7 @@ const Index = () => {
     isInitializing
   } = useSpeechRecognition();
   
-  const [soapReport, setSoapReport] = useState<{
-    subjective: string;
-    objective: string;
-    assessment: string;
-    plan: string;
-  } | null>(null);
+  const [soapReport, setSoapReport] = useState<SoapReportData | null>(null);
 
   React.useEffect(() => {
     if (!browserSupportsSpeechRecognition) {
@@ -48,26 +67,38 @@ const Index = () => {
     const lines = transcript.split(/\.\s+|\n+/).filter(line => line.trim().length > 0);
     
     let report = {
-      subjective: '',
-      objective: '',
-      assessment: '',
-      plan: '',
+      subjective: {
+        content: '',
+        sources: [],
+      },
+      objective: {
+        content: '',
+        sources: [],
+      },
+      assessment: {
+        content: '',
+        sources: [],
+      },
+      plan: {
+        content: '',
+        sources: [],
+      },
     };
 
     if (lines.length >= 1) {
-      report.subjective = lines.slice(0, Math.min(2, lines.length)).join('. ');
+      report.subjective.content = lines.slice(0, Math.min(2, lines.length)).join('. ');
     }
     
     if (lines.length >= 3) {
-      report.objective = lines.slice(2, Math.min(4, lines.length)).join('. ');
+      report.objective.content = lines.slice(2, Math.min(4, lines.length)).join('. ');
     }
     
     if (lines.length >= 5) {
-      report.assessment = lines[4];
+      report.assessment.content = lines[4];
     }
     
     if (lines.length >= 6) {
-      report.plan = lines.slice(5).join('. ');
+      report.plan.content = lines.slice(5).join('. ');
     }
     
     setSoapReport(report);
