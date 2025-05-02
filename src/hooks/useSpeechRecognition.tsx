@@ -48,6 +48,15 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
   // Keep track of the last final text to avoid duplicates
   const lastFinalTextRef = useRef<string>('');
 
+  // Add socket status tracking
+  const [isSocketConnected, setIsSocketConnected] = useState<boolean>(false);
+  const socketCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const checkSocketConnection = useCallback(() => {
+    // Use our tracked state and initialization status
+    return isInitializedRef.current && isSocketConnected;
+  }, [isSocketConnected]);
+
   // Update transcript from segments with duplicate prevention
   useEffect(() => {
     // Get all final segments
@@ -191,7 +200,11 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
   const initializeTranscriber = async () => {
     try {
       if (transcriberRef.current) {
-        await transcriberRef.current.close();
+        try {
+          await transcriberRef.current.close();
+        } catch (error) {
+          console.log('Error closing existing transcriber:', error);
+        }
         transcriberRef.current = null;
       }
 
@@ -199,7 +212,6 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
       const transcriber = new RealtimeTranscriber({
         token,
         sampleRate: 16000,
-        // Optimize for real-time transcription
         wordBoost: ['patient', 'doctor', 'medical', 'health', 'symptoms', 'treatment'],
         encoding: 'pcm_s16le'
       });
@@ -208,11 +220,18 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
         console.log(`Session opened: ${sessionId}`);
         isInitializedRef.current = true;
         setIsInitialized(true);
+        setIsSocketConnected(true);
       });
 
       transcriber.on('error', (error) => {
         console.error('Transcription error:', error);
         setError(error.message);
+        setIsSocketConnected(false);
+      });
+
+      transcriber.on('close', () => {
+        console.log('Socket connection closed');
+        setIsSocketConnected(false);
       });
 
       transcriber.on('transcript', (message) => {
@@ -265,6 +284,9 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
       if (transcriberRef.current) {
         transcriberRef.current.close();
       }
+      if (socketCheckTimeoutRef.current) {
+        clearTimeout(socketCheckTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -276,15 +298,15 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
       } else {
         console.log('Starting new recording...');
         setError(null);
-        setTranscript('');
 
-        // If transcriber is not initialized, initialize it
-        if (!isInitializedRef.current) {
+        // Check socket connection before starting
+        if (!isSocketConnected || !checkSocketConnection()) {
+          console.log('Socket not connected, reinitializing...');
           setIsInitializing(true);
           try {
             await initializeTranscriber();
           } catch (error) {
-            console.error('Failed to initialize transcriber:', error);
+            console.error('Failed to reinitialize transcriber:', error);
             setError(error instanceof Error ? error.message : 'Initialization failed');
             setIsInitializing(false);
             return;
@@ -390,6 +412,9 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
       await transcriberRef.current.sendAudio(audioData.buffer);
     } catch (error) {
       console.error('Error processing audio data:', error);
+      if (error.message.includes('Socket is not open')) {
+        setIsSocketConnected(false);
+      }
     }
   };
 
