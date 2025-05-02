@@ -2,17 +2,37 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { soapReportService } from "@/services/soapReport";
+
+interface SourceRange {
+  start: number;
+  end: number;
+}
+
+interface Source {
+  speaker: string;
+  quote?: string;
+  finding?: string;
+  reasoning?: string;
+  action?: string;
+  range: SourceRange;
+}
+
+interface SectionData {
+  content: string;
+  sources: Source[];
+}
+
+interface SoapReportData {
+  subjective: SectionData;
+  objective: SectionData;
+  assessment: SectionData;
+  plan: SectionData;
+}
 
 interface SoapReportProps {
   transcript: string;
-  soapReport: {
-    subjective: string;
-    objective: string;
-    assessment: string;
-    plan: string;
-  } | null;
-  setSoapReport: (report: SoapReportProps['soapReport']) => void;
+  soapReport: SoapReportData | null;
+  setSoapReport: (report: SoapReportData | null) => void;
 }
 
 const SoapReport: React.FC<SoapReportProps> = ({
@@ -22,8 +42,9 @@ const SoapReport: React.FC<SoapReportProps> = ({
 }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [highlightedText, setHighlightedText] = useState<string | null>(null);
 
-  const handleGenerateReport = async () => {
+  const generateReport = async () => {
     if (!transcript.trim()) {
       toast({
         title: "No transcription available",
@@ -35,20 +56,29 @@ const SoapReport: React.FC<SoapReportProps> = ({
 
     setIsLoading(true);
     try {
-      const response = await soapReportService.generateSoapReport(transcript);
-      if (response.success) {
-        setSoapReport(response.data);
-        toast({
-          title: "SOAP Report Generated",
-          description: "Your report has been successfully created.",
-        });
-      } else {
-        throw new Error(response.message);
+      const response = await fetch('https://automationapi.getmentore.com/soap-report/generate-enhanced', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: transcript }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to generate report');
       }
+
+      setSoapReport(data.data);
+      toast({
+        title: "SOAP Report Generated",
+        description: "Your enhanced report has been successfully created.",
+      });
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate SOAP report",
+        description: error instanceof Error ? error.message : "Failed to generate report",
         variant: "destructive",
       });
     } finally {
@@ -56,58 +86,108 @@ const SoapReport: React.FC<SoapReportProps> = ({
     }
   };
 
-  if (!transcript) {
-    return null;
-  }
+  const sectionColors = {
+    subjective: 'bg-blue-50 hover:bg-blue-100',
+    objective: 'bg-green-50 hover:bg-green-100',
+    assessment: 'bg-yellow-50 hover:bg-yellow-100',
+    plan: 'bg-pink-50 hover:bg-pink-100',
+  };
 
-  if (!soapReport) {
+  const renderHighlightedTranscript = () => {
+    if (!transcript) return null;
+
+    if (!highlightedText) {
+      return <p className="text-sm whitespace-pre-wrap text-gray-900">{transcript}</p>;
+    }
+
+    // Create a regex that matches the text exactly, ignoring case
+    const regex = new RegExp(highlightedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const parts = transcript.split(regex);
+    const matches = transcript.match(regex);
+
+    if (!matches) {
+      return <p className="text-sm whitespace-pre-wrap text-gray-900">{transcript}</p>;
+    }
+
     return (
-      <div className="w-full mt-6 text-center">
-        <Button 
-          onClick={handleGenerateReport} 
-          className="bg-primary hover:bg-primary/90"
-          disabled={isLoading}
-        >
-          {isLoading ? "Generating..." : "Generate SOAP Report"}
-        </Button>
+      <p className="text-sm whitespace-pre-wrap text-gray-900">
+        {parts.map((part, index) => (
+          <React.Fragment key={index}>
+            {part}
+            {index < matches.length && (
+              <span className="bg-yellow-200">{matches[index]}</span>
+            )}
+          </React.Fragment>
+        ))}
+      </p>
+    );
+  };
+
+  const renderSection = (title: string, section: SectionData | undefined, type: keyof typeof sectionColors) => {
+    if (!section) return null;
+
+    return (
+      <div className={`p-4 rounded-lg mb-4 ${sectionColors[type]}`}>
+        <h3 className="font-semibold text-lg mb-2">{title}</h3>
+        <div className="space-y-4">
+          {/* Main content */}
+          <div className="border-b pb-2">
+            <p className="text-base font-medium">{section.content}</p>
+          </div>
+          
+          {/* Sources */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-gray-600">Supporting Evidence:</h4>
+            {section.sources.map((source, idx) => {
+              const textToHighlight = source.quote || source.finding || source.reasoning || source.action;
+              return (
+                <div
+                  key={idx}
+                  className="p-2 rounded hover:bg-white/50 transition-colors"
+                  onMouseEnter={() => setHighlightedText(textToHighlight)}
+                  onMouseLeave={() => setHighlightedText(null)}
+                >
+                  <p className="text-sm">
+                    {textToHighlight}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">- {source.speaker}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     );
-  }
+  };
 
   return (
-    <Card className="w-full mt-6">
-      <CardHeader>
+    <Card className="w-full mt-4">
+      <CardHeader className="flex flex-row items-center justify-between space-x-4">
         <CardTitle className="text-primary">SOAP Report</CardTitle>
+        <Button
+          onClick={generateReport}
+          disabled={isLoading || !transcript.trim()}
+        >
+          {isLoading ? "Generating..." : "Generate Report"}
+        </Button>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-lg font-medium text-gray-700">S: Subjective</h3>
-            <p className="text-gray-600 whitespace-pre-wrap">{soapReport.subjective}</p>
+      <CardContent>
+        {soapReport ? (
+          <div className="space-y-4">
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold mb-2">Original Transcript</h3>
+              {renderHighlightedTranscript()}
+            </div>
+            {renderSection('Subjective', soapReport.subjective, 'subjective')}
+            {renderSection('Objective', soapReport.objective, 'objective')}
+            {renderSection('Assessment', soapReport.assessment, 'assessment')}
+            {renderSection('Plan', soapReport.plan, 'plan')}
           </div>
-          <div>
-            <h3 className="text-lg font-medium text-gray-700">O: Objective</h3>
-            <p className="text-gray-600 whitespace-pre-wrap">{soapReport.objective}</p>
+        ) : (
+          <div className="text-center text-gray-500 py-8">
+            Click "Generate Report" to create a SOAP report from your transcription
           </div>
-          <div>
-            <h3 className="text-lg font-medium text-gray-700">A: Assessment</h3>
-            <p className="text-gray-600 whitespace-pre-wrap">{soapReport.assessment}</p>
-          </div>
-          <div>
-            <h3 className="text-lg font-medium text-gray-700">P: Plan</h3>
-            <p className="text-gray-600 whitespace-pre-wrap">{soapReport.plan}</p>
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <Button 
-            onClick={handleGenerateReport} 
-            variant="outline" 
-            className="text-primary border-primary hover:bg-primary/10"
-            disabled={isLoading}
-          >
-            {isLoading ? "Regenerating..." : "Regenerate Report"}
-          </Button>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
