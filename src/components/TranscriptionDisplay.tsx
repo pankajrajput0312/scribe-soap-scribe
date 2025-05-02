@@ -210,6 +210,12 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
                   <div className="text-gray-500 text-center py-4">
                     {isRecording ? (
                       "Speaker identified transcript will be generated once you click on stop recording button"
+                    ) : transcript ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        <p>Wait for 1-2 minutes, speaker transcription is generating</p>
+                        <p className="text-sm">This will generally take a few seconds to run</p>
+                      </div>
                     ) : (
                       "No speaker identified transcript available yet"
                     )}
