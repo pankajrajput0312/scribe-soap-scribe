@@ -20,7 +20,7 @@ Vs1 Deployed Link:- https://preview-e048df88--audio-to-soap-generator.lovable.ap
 
 Vs2 Deployed Link:- https://audio-to-soap-generator.lovable.app/
 
-Demo Video Link: [Demo Video](https://www.dropbox.com/scl/fi/ychwqyrs122frvdm9aln3/Asha_health_assignment_demo-Made-with-Clipchamp_1746206964098.mp4?rlkey=ptoctcqipeqzr7csm107gh3h0&dl=0)
+Demo Video Link: [Demo Video](https://www.dropbox.com/scl/fi/ychwqyrs122frvdm9aln3/Asha_health_assignment_demo-Made-with-Clipchamp_1746206964098.mp4?rlkey=ptoctcqipeqzr7csm107gh3h0&e=1&dl=0)
 
 ## Features
 
