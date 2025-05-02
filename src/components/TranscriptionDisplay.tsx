@@ -114,7 +114,7 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
                   htmlFor={speaker} 
                   className={`text-sm ${SPEAKER_COLORS[speaker as keyof typeof SPEAKER_COLORS]}`}
                 >
-                  {speaker}
+                {speaker}
                 </Label>
               </div>
             ))}
@@ -135,43 +135,43 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
                     Recorded transcription will be visible here. Click on Start Recording to begin.
                   </div>
                 ) : (
-                  <AnimatePresence mode="popLayout">
-                    {visibleSegments.map((segment, index) => (
-                      <motion.span
-                        key={segment.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ 
-                          opacity: segment.isFinal ? 1 : 0.6,
-                          y: 0 
-                        }}
-                        exit={{ opacity: 0 }}
-                        transition={{ 
-                          duration: segment.isFinal ? 0.3 : 0.15,
-                          ease: "easeOut"
-                        }}
-                        className={`inline ${
-                          segment.isFinal 
-                            ? 'text-gray-900 font-normal' 
-                            : 'text-gray-700 font-light'
-                        }`}
-                      >
-                        {index > 0 ? ' ' : ''}{segment.text}
-                      </motion.span>
-                    ))}
-                    {isRecording && (
-                      <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 1, 0] }}
-                        transition={{ 
-                          repeat: Infinity,
-                          duration: 1.5
-                        }}
-                        className="inline-block ml-1 text-primary"
-                      >
-                        ●
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
+                <AnimatePresence mode="popLayout">
+                  {visibleSegments.map((segment, index) => (
+                    <motion.span
+                      key={segment.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ 
+                        opacity: segment.isFinal ? 1 : 0.6,
+                        y: 0 
+                      }}
+                      exit={{ opacity: 0 }}
+                      transition={{ 
+                        duration: segment.isFinal ? 0.3 : 0.15,
+                        ease: "easeOut"
+                      }}
+                      className={`inline ${
+                        segment.isFinal 
+                          ? 'text-gray-900 font-normal' 
+                          : 'text-gray-700 font-light'
+                      }`}
+                    >
+                      {index > 0 ? ' ' : ''}{segment.text}
+                    </motion.span>
+                  ))}
+                  {isRecording && (
+                    <motion.span
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: [0, 1, 0] }}
+                      transition={{ 
+                        repeat: Infinity,
+                        duration: 1.5
+                      }}
+                      className="inline-block ml-1 text-primary"
+                    >
+                      ●
+                    </motion.span>
+                  )}
+                </AnimatePresence>
                 )}
               </div>
             </ScrollArea>
@@ -182,14 +182,14 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({
               <div className="space-y-4">
                 {enhancedTranscript.length > 0 ? (
                   enhancedTranscript.map((segment, idx) => (
-                    <div key={idx} className="flex gap-2">
+                  <div key={idx} className="flex gap-2">
                       <span className={`font-medium whitespace-nowrap ${SPEAKER_COLORS[segment.speaker as keyof typeof SPEAKER_COLORS]}`}>
-                        {segment.speaker}:
-                      </span>
-                      <span className="text-gray-700">
-                        {segment.text}
-                      </span>
-                    </div>
+                      {segment.speaker}:
+                    </span>
+                    <span className="text-gray-700">
+                      {segment.text}
+                    </span>
+                  </div>
                   ))
                 ) : (
                   <div className="text-gray-500 text-center py-4">

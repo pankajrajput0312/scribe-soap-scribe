@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { soapReportService } from '@/services/soapReport';
 
 interface SourceRange {
   start: number;
@@ -56,20 +57,7 @@ const SoapReport: React.FC<SoapReportProps> = ({
 
     setIsLoading(true);
     try {
-      const response = await fetch('https://automationapi.getmentore.com/soap-report/generate-enhanced', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: transcript }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to generate report');
-      }
-
+      const data = await soapReportService.generateEnhancedReport(transcript);
       setSoapReport(data.data);
       toast({
         title: "SOAP Report Generated",

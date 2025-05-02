@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { RealtimeTranscriber } from 'assemblyai';
 import { debounce } from 'lodash';
+import { soapReportService } from '@/services/soapReport';
 
 interface TranscriptionSegment {
   text: string;
@@ -130,15 +131,7 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
   const getToken = async () => {
     try {
       console.log('Fetching token...');
-      const response = await fetch('https://automationapi.getmentore.com/soap-report/token');
-      console.log('Token response status:', response.status);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`Failed to get token: ${errorData.error || response.statusText}`);
-      }
-      
-      const data = await response.json();
+      const data = await soapReportService.getToken();
       console.log('Token received:', data);
       return data.token;
     } catch (error) {
@@ -150,23 +143,7 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
 
   const processTranscriptWithSpeakers = async (text: string) => {
     try {
-      const response = await fetch('http://localhost:3000/soap-report/speaker-labeled', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          speakers: selectedSpeakers,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to process transcript');
-      }
-
+      const data = await soapReportService.getSpeakerLabeledTranscript(text, selectedSpeakers);
       setEnhancedTranscript(data.data.conversation);
     } catch (error) {
       console.error('Error processing transcript:', error);
