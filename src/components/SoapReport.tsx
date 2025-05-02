@@ -56,7 +56,7 @@ const SoapReport: React.FC<SoapReportProps> = ({
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/soap-report/generate-enhanced', {
+      const response = await fetch('https://automationapi.getmentore.com/soap-report/generate-enhanced', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

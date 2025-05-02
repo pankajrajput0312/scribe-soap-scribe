@@ -150,7 +150,7 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
 
   const processTranscriptWithSpeakers = async (text: string) => {
     try {
-      const response = await fetch('https://automationapi.getmentore.com/soap-report/speaker-labeled', {
+      const response = await fetch('http://localhost:3000/soap-report/speaker-labeled', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
