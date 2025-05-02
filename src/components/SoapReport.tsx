@@ -42,6 +42,7 @@ const SoapReport: React.FC<SoapReportProps> = ({
 }) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [highlightedText, setHighlightedText] = useState<string | null>(null);
 
   const generateReport = async () => {
     if (!transcript.trim()) {
@@ -92,6 +93,36 @@ const SoapReport: React.FC<SoapReportProps> = ({
     plan: 'bg-pink-50 hover:bg-pink-100',
   };
 
+  const renderHighlightedTranscript = () => {
+    if (!transcript) return null;
+
+    if (!highlightedText) {
+      return <p className="text-sm whitespace-pre-wrap text-gray-900">{transcript}</p>;
+    }
+
+    // Create a regex that matches the text exactly, ignoring case
+    const regex = new RegExp(highlightedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const parts = transcript.split(regex);
+    const matches = transcript.match(regex);
+
+    if (!matches) {
+      return <p className="text-sm whitespace-pre-wrap text-gray-900">{transcript}</p>;
+    }
+
+    return (
+      <p className="text-sm whitespace-pre-wrap text-gray-900">
+        {parts.map((part, index) => (
+          <React.Fragment key={index}>
+            {part}
+            {index < matches.length && (
+              <span className="bg-yellow-200">{matches[index]}</span>
+            )}
+          </React.Fragment>
+        ))}
+      </p>
+    );
+  };
+
   const renderSection = (title: string, section: SectionData | undefined, type: keyof typeof sectionColors) => {
     if (!section) return null;
 
@@ -107,17 +138,22 @@ const SoapReport: React.FC<SoapReportProps> = ({
           {/* Sources */}
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-gray-600">Supporting Evidence:</h4>
-            {section.sources.map((source, idx) => (
-              <div
-                key={idx}
-                className="p-2 rounded hover:bg-white/50 transition-colors"
-              >
-                <p className="text-sm">
-                  {source.quote || source.finding || source.reasoning || source.action}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">- {source.speaker}</p>
-              </div>
-            ))}
+            {section.sources.map((source, idx) => {
+              const textToHighlight = source.quote || source.finding || source.reasoning || source.action;
+              return (
+                <div
+                  key={idx}
+                  className="p-2 rounded hover:bg-white/50 transition-colors"
+                  onMouseEnter={() => setHighlightedText(textToHighlight)}
+                  onMouseLeave={() => setHighlightedText(null)}
+                >
+                  <p className="text-sm">
+                    {textToHighlight}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">- {source.speaker}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -140,9 +176,7 @@ const SoapReport: React.FC<SoapReportProps> = ({
           <div className="space-y-4">
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
               <h3 className="font-semibold mb-2">Original Transcript</h3>
-              <p className="text-sm whitespace-pre-wrap text-gray-900">
-                {transcript}
-              </p>
+              {renderHighlightedTranscript()}
             </div>
             {renderSection('Subjective', soapReport.subjective, 'subjective')}
             {renderSection('Objective', soapReport.objective, 'objective')}
